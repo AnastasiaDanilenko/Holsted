@@ -1,0 +1,186 @@
+<?php
+
+include($_SERVER['DOCUMENT_ROOT'].'/quests/quests_json.php');
+
+$json_quests = json_decode($json_data);
+
+       $af_count = $json_quests->location00[0]->count;
+       $tc_count = $json_quests->location01[0]->count;
+    $swamp_count = $json_quests->location02[0]->count;
+  $islands_count = $json_quests->location03[0]->count;
+   $desert_count = $json_quests->location04[0]->count;
+     $rift_count = $json_quests->location05[0]->count;
+    $under_count = $json_quests->location06[0]->count;
+    $frost_count = $json_quests->location07[0]->count;
+$sanctuary_count = $json_quests->location08[0]->count;
+
+$total_quests = $af_count + $tc_count + $swamp_count + $islands_count + $desert_count + $rift_count + $under_count + $frost_count + $sanctuary_count;
+
+echo '
+<div id="quest_monitor">
+    Quests done: <span id="total_quests_done">0</span>/'.$total_quests.'
+</div>';
+$locations = array
+                 (
+                    "location00" => "Arcadian Forest",
+                    "location01" => "Tear Coast",
+                    "location02" => "Swamp of Wyrms",
+                    "location03" => "The Whispering Islands",
+                    "location04" => "The Great Desert",
+                    "location05" => "Sinskaald Rift",
+                    "location06" => "Under Realm",
+                    "location07" => "Eternal Frostlund",
+                    "location08" => "Sanctuary"
+                 );
+
+function get_data($location, $id){
+    global $json_quests;
+    
+    $entry_id    = $json_quests->{$location}[0]->{$id}[0]->entry_id;
+    $name        = $json_quests->{$location}[0]->{$id}[0]->name;
+    $npc         = $json_quests->{$location}[0]->{$id}[0]->npc_id;
+    $link        = $json_quests->{$location}[0]->{$id}[0]->link;
+    $has_link    = $json_quests->{$location}[0]->{$id}[0]->has_link;
+    $reward      = $json_quests->{$location}[0]->{$id}[0]->gold_reward;
+    $event       = $json_quests->{$location}[0]->{$id}[0]->event;
+    $description = $json_quests->{$location}[0]->{$id}[0]->description;
+    $data = array
+            (
+                'id'          => $entry_id,
+                'name'        => $name,
+                'npc'         => $npc,
+                'link'        => $link,
+                'has_link'    => $has_link,
+                'reward'      => $reward,
+                'event'       => $event,
+                'description' => $description
+            );
+    return $data;
+}
+
+function gold_reward($reward){
+    $bronze = $reward % 100;
+    $silver = ($reward / 100) % 100;
+    $gold = ($reward / 10000) % 100;
+    
+    if ($gold == 0) { $gold_span = '<span class="reward_blank"></span>'; } else { $gold_span = '<span class="gold">'.$gold.'</span>'; }
+    if (($silver == 0) && ($gold == 0)) { $silver_span = '<span class="reward_blank"></span>'; } else { $silver_span = '<span class="silver">'.$silver.'</span>'; }
+    $bronze_span = '<span class="bronze">'.$bronze.'</span>';
+    
+    $data = $bronze_span.$silver_span.$gold_span;
+    return $data;
+}
+
+function get_rotation_day($npc) {
+    include $_SERVER['DOCUMENT_ROOT'].'/includes/db_con/oaclive.php';
+    return mysqli_fetch_object(mysqli_query($con, 'SELECT state AS day FROM rotation WHERE npc = '.$npc))->day;
+}
+
+function check_soul_dailies($quest, $npc) {
+    $day = get_rotation_day($npc);
+    $data = array(1 => array(946, 947, 1386), 2 => array(1376, 1382, 1391), 3 => array(1377, 1383, 1586), 4 => array(1378, 1384, 1587), 5 => array(1379, 1385, 1588), 6 => array(1380, 1386), 7 => array(1617, 1391), 8 => array(1618, 1586), 9 => array(1619, 947, 1587), 10 => array(1620, 1382, 1588), 11 => array(1383), 12 => array(1384), 13 => array(1385));
+    return in_array($quest, $data[$day]);
+}
+
+function check_shady_trader_siliu($quest, $npc) {
+    $day = get_rotation_day($npc);
+    $data = array(1 => array(806), 2 => array(807), 3 => array(808));
+    return in_array($quest, $data[$day]);
+}
+
+function check_mech_bosses($quest, $npc) {
+    $day = get_rotation_day($npc);
+    $data = array(1 => array(1202, 1203), 2 => array(1203, 1208), 3 => array(1208, 1209), 4 => array(1209, 1202));
+    return in_array($quest, $data[$day]);
+}
+
+function check_frost_mech_mobs($quest, $npc) {
+    $day = get_rotation_day($npc);
+    $data = array(1 => array(1210, 1211, 1212), 2 => array(1211, 1212, 1213), 3 => array(1212, 1213, 1214), 4 => array(1213, 1214, 1215), 5 => array(1210, 1214, 1215), 6 => array(1210, 1211, 1215));
+    return in_array($quest, $data[$day]);
+}
+
+function check_under_mech_mobs($quest, $npc) {
+    $day = get_rotation_day($npc);
+    $data = array(1 => array(1204, 1205), 2 => array(1205, 1206), 3 => array(1206, 1207), 4 => array(1207, 1204));
+    return in_array($quest, $data[$day]);
+}
+
+function quest_is_today($quest, $npc) {
+    $suspicious = array(602, 639, 695);
+    switch ($npc) {
+        case 602: case 639: return check_soul_dailies($quest, $npc);   
+		    break;
+        case 695:           return check_shady_trader_siliu($quest, $npc); 
+		break;
+        case 1103:          return check_mech_bosses($quest, $npc);     
+		   break;
+        case 1104:          return check_frost_mech_mobs($quest, $npc); 
+		   break;
+        case 1105:          return check_under_mech_mobs($quest, $npc);  
+		  break;
+        default:            return true;
+		 break;
+    }
+}
+
+function print_quests($location, $count){
+    global $locations;
+    global $events;
+    
+    $quest_tbl = '';
+    $count_quests = $count;
+    for ($i=0; $i<$count; $i++)
+    {
+        $id = 'id_'.$i;
+        
+        $quest = get_data($location, $id);
+        $class = '';
+        if (!quest_is_today($quest['id'], $quest['npc'])) {
+            $count_quests -= 1;
+        } else {
+            $quest['has_link'] == 1 ? $href = '<a class="db_link" href="http://oac-head.com/quests/'.$quest['link'].'/" target="blank">'.$quest['name'].'</a>' : $href = '<span>'.$quest['name'].'</span>';
+            $quest_tbl .= '
+            <tr class="quest_row'.$class.'" id="'.$quest['id'].'">
+                <td class="title">'.$href.'</td>
+                <td>'.gold_reward($quest['reward']).'</td>
+                <td class="status">
+                    <input type="checkbox" class="completed" name="completed_'.$quest['link'].'" id="completed_'.$quest['link'].'" value="1" />
+                    <label for="completed_'.$quest['link'].'" onclick=""></label>
+                </td>
+            </tr>
+            ';
+        }
+    }
+    
+    $echo = '
+<div class="world_wrapper">
+    <div class="world_name" colspan="6">'.$locations[$location].' (<span class="counter" id="'.$location.'_counter">0</span>/'.$count_quests.' done)</div>
+    <div class="quest_tbl_wrap" id="'.$location.'">
+        <table class="quest_tbl">
+            <!--tr class="quest_nav">
+                <td class="title">Title</td>
+                <td class="reward">Gold</td>
+                <td class="event">Event</td>
+                <td class="period">Period</td>
+                <td class="description">Description</td>
+                <td class="status">Completed</td>
+            </tr-->
+            '.$quest_tbl.'
+        </table>
+    </div>
+</div>';
+    
+    return $echo;
+}
+
+echo print_quests('location00', $af_count);
+echo print_quests('location08', $sanctuary_count);
+echo print_quests('location02', $swamp_count);
+echo print_quests('location03', $islands_count);
+echo print_quests('location04', $desert_count);
+echo print_quests('location05', $rift_count);
+echo print_quests('location06', $under_count);
+echo print_quests('location07', $frost_count);
+
+?>

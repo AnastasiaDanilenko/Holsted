@@ -1,0 +1,14 @@
+program Holsted;
+
+uses
+  Vcl.Forms,
+  Unit1 in 'Unit1.pas' {Form_Hoslted};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm_Hoslted, Form_Hoslted);
+  Application.Run;
+end.

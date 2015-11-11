@@ -1,0 +1,534 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls;
+
+type
+  TArrSt = array of string;
+  TOperand = record
+          operand: string;
+          count: integer;
+  end;
+  TArrOp = array of TOperand;
+  TArrInt = array of integer;
+  TForm_Holsted = class(TForm)
+    Memo_Text: TMemo;
+    Label_Text: TLabel;
+    Button_Download: TButton;
+    Panel_Holsted: TPanel;
+    Label_Basic: TLabel;
+    Label_Unic_Operators: TLabel;
+    Label_Unic_Operands: TLabel;
+    Label_Amount_Operators: TLabel;
+    Label_Amount_Operands: TLabel;
+    Label_Enterings_Operator: TLabel;
+    Label_Enterings_Operand: TLabel;
+    Label_Sost: TLabel;
+    Label_Vocabulary: TLabel;
+    Label_Length: TLabel;
+    Label_Volume: TLabel;
+    OpenDialog1: TOpenDialog;
+    procedure Button_DownloadClick(Sender: TObject);
+    function create_array: TArrSt;
+    function find_define(operands: TArrOp; text: TArrSt): TArrOp;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form_Holsted: TForm_Holsted;
+
+implementation
+
+{$R *.dfm}
+
+function load_default: TArrSt;
+var
+  i, count: integer;
+  text: textfile;
+  default: TArrSt;
+  buf: string;
+begin
+    assignfile(text, 'E:\Laboratory_Works\Holsted\operators.txt');
+    reset(text);
+    count := 1;
+    setlength(default, count);
+    while not eof(text) do
+    begin
+        readln(text, buf);
+        default[count - 1] := buf;
+        inc(count);
+        setlength(default,count);
+    end;
+    setlength(default,count - 1);
+    closefile(text);
+    result := default;
+end;
+
+function decap_line(line: string):TArrSt;
+var
+  i, count, curr: integer;
+  buf: string;
+  array_line: TArrSt;
+begin
+    i := 1;
+    count := 1;
+    setlength(array_line, count);
+  while I <= length(line) do
+  begin
+    buf := '';
+    curr := i;
+    while line[curr] <> ' '  do
+     begin
+      if (line[curr - 1] + line[curr] = '//') or (line[curr] = '#') then
+      begin
+        buf := buf + line[curr];
+        break;
+      end
+      else
+      begin
+      buf := buf + line[curr];
+      inc(curr);
+      end;
+
+      if curr > length(line) then
+         break;
+     end;
+    i := curr + 1;
+    array_line[count - 1] := buf;
+    inc(count);
+    setlength(array_line, count);
+  end;
+  setlength(array_line, count - 1);
+  result := array_line;
+end;
+
+function concat_arrays(text, new: TArrSt): TArrSt;
+var
+  i, lgth, j, new_l: integer;
+  buf: TArrSt;
+begin
+   lgth := length(text);
+   if lgth = 0 then
+   begin
+     lgth := length(new);
+     setlength(text, lgth);
+     text := new;
+   end
+   else
+   begin
+     lgth := length(text) + length(new);
+     new_l := length(text);
+     setlength(text, lgth);
+     buf := new;
+     j := 0;
+     for i := new_l to lgth - 1  do
+     begin
+         text[i] := new[j];
+         inc(j);
+     end;
+   end;
+   result := text;
+end;
+
+function TForm_Holsted.create_array: TArrSt;
+var
+  i, lol, n, m: integer;
+  from_line, array_text: TArrSt;
+  line: string;
+begin
+  lol := Memo_Text.lines.count;
+  i := 0;
+  While I < lol - 1 do
+  begin
+    if memo_text.lines[i] <> '' then
+    begin
+      line := memo_text.Lines[i];
+      n := pos('/*', line);
+      if (n = 0) then
+      begin
+        from_line := Decap_Line(memo_text.Lines[i]);
+        array_text := concat_arrays(array_text, from_line);
+      end
+      else
+      begin
+          setlength(from_line,1);
+          from_line[0] := '/*';
+          array_text := concat_arrays(array_text, from_line);
+          m := pos('*/', line);
+          while m = 0 do
+          begin
+              inc(i);
+              line := memo_text.Lines[i];
+              m := pos('*/', line);
+          end;
+        setlength(from_line,1);
+        from_line[0] := '*/';
+        array_text := concat_arrays(array_text, from_line);
+    end;
+    end;
+    inc(i);
+  end;
+  result := array_text;
+end;
+
+function find_doubles(operands: TArrOp; line: string): integer;
+var
+  lgth, find: integer;
+begin
+  lgth := length(operands);
+  for find := 0 to lgth - 1 do
+  begin
+     if operands[find].operand = line then
+         break;
+  end;
+  if find  = lgth then
+       find := -1;
+  result := find;
+end;
+
+
+function test_string(line: string): string;
+const
+  dividers: set of char = [',', ';', '(', ')', '+', '-'];
+var
+  i, lgth, j : integer;
+  new_line: string;
+begin
+  lgth := length(line);
+  j := 1;
+  setlength(new_line, j);
+  for i := 1 to lgth do
+  begin
+    if line[i] in dividers then
+         line[i] := line[i]
+    else
+    begin
+      new_line[j] := line[i];
+      inc(j);
+      setlength(new_line, j);
+    end;
+  end;
+  setlength(new_line, j - 1);
+  result := new_line;
+end;
+
+function include_new(operands: TArrop; text: string): TArrOp;
+var
+  j, place: integer;
+  test : string;
+begin
+   j := length(operands);
+   test := test_string(text);
+   if j = 0 then
+   begin
+     setlength(operands, 1);
+     operands[j].operand := test;
+     operands[j].count := 1;
+   end
+   else
+   begin
+      place := find_doubles(operands, test);
+      if place = -1 then
+      begin
+        inc(j);
+        setlength(operands, j);
+        operands[j - 1].operand := test;
+        operands[j - 1].count := 1;
+      end
+      else
+      begin
+        operands[place].count := operands[place].count + 1;
+      end;
+   end;
+   result := operands;
+end;
+
+function find_letter(line:string):integer;
+const
+  del: set of char = ['(', ')', '[', ']', '<'];
+  alf: set of char = ['A'.. 'Z', 'a'.. 'z'];
+var
+  i, lgth, j: integer;
+  found: char;
+begin
+  i := pos('$', line);
+  if (line[i-1] in del) then
+  begin
+      result := i - 1;
+  end
+  else
+  begin
+    for j := i to length(line) do
+        if line[j] in del then
+           break;
+
+    result := j;
+  end;
+end;
+
+
+function test_line(line: string): string;
+const
+  del: set of char = ['(', ')', '[', ']', '<', ',', '.'];
+  alf: set of char = ['A'.. 'Z', 'a'.. 'z'];
+var
+  i, lgth: integer;
+  buf: string;
+begin
+  buf := line[1];
+  for i := 2 to length(line) do
+  begin
+      if line[i] in alf then
+          buf := buf + line[i]
+      else
+          break;
+  end;
+  result := buf;
+
+end;
+
+Function look(line: string; count: integer; operands: TArrOp): TArrOp;
+var
+  copy_s: string;
+  letter: integer;
+  i,  lgth, j, argh, amount: integer;
+begin
+           while count <> 0 do
+           begin
+              letter := find_letter(line);
+              if letter <> 0 then
+               begin
+                  if letter < count then
+                  begin
+                      copy_s := copy(line, count, length(line) - letter);
+                      copy_s := test_line(copy_s);
+                  end
+                  else
+                  begin
+                      copy_s := copy(line, count, letter - count);
+                      copy_s := test_line(copy_s);
+                  end;
+                  if copy_s <> '' then
+                      operands := include_new(operands, copy_s);
+                  if count > 1 then
+                     delete(line, 1, count + 1)
+                  else
+                      delete(line, count, letter);
+                  count := pos('$', line);
+               end
+               else
+               begin
+                  operands := include_new(operands, line);
+                  count := 0;
+               end;
+           end;
+           result := operands;
+ end;
+
+function find_operands(text: TArrSt): TArrOp;
+var
+  operands: TArrOp;
+  copy_s, line: string;
+  letter: char;
+  i, count, lgth, j, argh, amount: integer;
+begin
+    j := 0;
+    setlength(operands, j);
+   for i := 0 to length(text) - 1 do
+   begin
+       count := pos('$', text[i]);
+       if count <> 0 then
+          operands := look(text[i], count, operands);
+
+   end;
+   result := operands;
+end;
+
+function try_find(operands: TArrOp; line: string): TArrOp;
+const
+  letters: set of char = ['A'..'Z', 'a'..'z'];
+var
+  i, lgth_m, n, lgth_l, reason: integer;
+begin
+   lgth_m := length(operands);
+   lgth_l := length(line);
+   for I := 0 to lgth_m - 1 do
+   begin
+     if length(operands[i].operand) < lgth_l then
+      begin
+        n := pos((operands[i].operand), line);
+        //if line[n+1] in letters then
+           // reason := 0
+        //else
+        //begin
+          if n <> 0 then
+            operands[i].count := operands[i].count + 1;
+        //end;
+      end;
+   end;
+   result := operands;
+end;
+
+function numbers(operands: TArrOp; line: string; text:TArrSt): TArrOp;
+const
+  numb: set of char = ['0'..'9'];
+var
+  i, lgth, j, len, curr: integer;
+  buf: string;
+begin
+  lgth := length(line);
+  i := 1;
+  While  i <= lgth do
+  begin
+    buf := '';
+    j := 0;
+    curr := i;
+    while line[curr] <> ' ' do
+    begin
+      if (line[curr] in numb) then
+      begin
+         inc(j);
+         buf := buf + line[curr];
+       end;
+       inc(curr);
+       if curr >= lgth then
+          break;
+       end;
+    if buf <> '' then
+    begin
+         j := find_doubles(operands, buf);
+       if j = -1 then
+       begin
+         len := length(operands);
+          setlength(operands, len+1);
+          operands[len].operand := buf;
+          operands[len].count := 1;
+       end
+       else
+           operands[j].count :=  operands[j].count + 1;
+    end;
+    i := curr;
+  end;
+  result := operands;
+end;
+
+function const_strings(operands: TArrOp; line: string): TArrOp;
+const
+  symbol_str = '"';
+var
+  i, found, new_found: integer;
+  copy_s: string;
+begin
+  found := pos(symbol_str, line);
+  if found <> 0 then
+  begin
+     copy_s := copy(line, found, length(line));
+     delete(line, 1, found - 1);
+     new_found := pos(symbol_str, line);
+     delete(copy_s, new_found, length(line));
+     operands := include_new(operands, copy_s);
+  end;
+  result := operands;
+end;
+
+function find_inlines(operands: TArrOp; text: TArrSt; sign: integer): TArrOp;
+const
+  symbol_str = '"';
+var
+  i, lgth, found, new_found: integer;
+  copy_s, line: string;
+begin
+  lgth := length(text);
+  i := 0;
+  while I < lgth - 1 do
+  begin
+    if sign = 1 then
+    begin
+      if (text[i] <> '') then
+      begin
+        line := text[i];
+        found := pos(symbol_str, line);
+        if found <> 0 then
+          begin
+          copy_s := copy(line, found + 1, length(line));
+          delete(line, 1, found);
+          new_found := pos(symbol_str, line);
+          if new_found <> 0 then
+          begin
+            delete(copy_s, new_found, length(copy_s) - 1);
+            operands := include_new(operands, copy_s);
+          end
+          else
+          begin
+            while new_found = 0 do
+            begin
+                inc(i);
+                copy_s := copy_s + text[i];
+                new_found := pos(symbol_str, copy_s);
+            end;
+            delete(copy_s, new_found, length(copy_s) - (new_found - 1));
+            operands := include_new(operands, copy_s);
+          end;
+        end;
+      end;
+    end
+    else
+    begin
+      if (text[i] <> '')  then
+        operands := numbers(operands, text[i], text);
+    end;
+    inc(i);
+  end;
+  result := operands;
+end;
+
+function TForm_Holsted.find_define(operands: TArrOp; text: TArrSt): TArrOp;
+const
+  def = 'define';
+  symbol_str = '"';
+var
+  i, found, new_found: integer;
+  line, copy_s: string;
+begin
+   for i := 0 to memo_text.lines.count - 1 do
+   begin
+     if (length(def) < length(memo_text.lines[i])) then
+     begin
+        line := memo_text.lines[i];
+        found := pos(def, line);
+        if found <> 0 then
+        begin
+          found := pos(symbol_str, line);
+          copy_s := copy(line, found + 1, length(line));
+          delete(line, 1, found);
+          new_found := pos(symbol_str, line);
+          delete(copy_s, new_found, length(copy_s) - 1);
+          operands := include_new(operands, copy_s);
+        end;
+     end;
+   end;
+   result := operands;
+end;
+
+procedure TForm_Holsted.Button_DownloadClick(Sender: TObject);
+var
+  array_operators, array_text: TArrSt;
+  operands: TArrOp;
+begin
+  array_operators := load_default;
+  if opendialog1.execute then
+      memo_text.Lines.LoadFromFile(opendialog1.filename);
+  array_text := create_array;
+  operands := find_operands(array_text);
+  operands := find_inlines(operands, array_text, 1);
+  //operands := find_define(operands, array_text);
+  //operands := find_inlines(operands, array_text, 2);
+end;
+
+end.
